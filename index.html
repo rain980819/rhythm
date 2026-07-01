@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>4/4박자 8마디 리듬 메이커 (고볼륨 & 공유 지원)</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 { color: #2c3e50; margin-bottom: 5px; }
+        
+        .panel {
+            background: white;
+            padding: 15px 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            margin-bottom: 15px;
+            width: 100%;
+            max-width: 1020px;
+            box-sizing: border-box;
+        }
+        .controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .palette-title {
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #34495e;
+            font-size: 14px;
+        }
+        .palette {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .tool-btn {
+            padding: 8px 12px;
+            background-color: #f1f3f5;
+            border: 2px solid #dee2e6;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        .tool-btn:hover { background-color: #e9ecef; }
+        .tool-btn.selected {
+            background-color: #3498db;
+            color: white;
+            border-color: #2980b9;
+        }
+        .tool-btn .symbol { font-size: 20px; font-weight: normal; }
+
+        button.main-btn {
+            padding: 10px 20px;
+            font-size: 15px;
+            font-weight: bold;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: opacity 0.1s;
+        }
+        button.main-btn:active { opacity: 0.8; }
+        
+        .btn-play { background-color: #2ecc71; color: white; }
+        .btn-play.playing { background-color: #e74c3c; }
+        .btn-clear { background-color: #e2e8f0; color: #4a5568; }
+        .btn-clear:hover { background-color: #cbd5e1; }
+        .btn-share { background-color: #9b59b6; color: white; }
+        .btn-share:hover { background-color: #8e44ad; }
+        
+        label { font-weight: bold; color: #4a5568; }
+        input[type="number"] {
+            width: 70px;
+            padding: 6px;
+            border: 1px solid #cbd5e1;
+            border-radius: 4px;
+            font-size: 15px;
+        }
+
+        .sequencer {
+            width: 100%;
+            max-width: 1020px;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            overflow-y: auto;
+            max-height: 55vh;
+            box-sizing: border-box;
+        }
+        .measure {
+            margin-bottom: 25px;
+            border-bottom: 2px solid #f1f3f5;
+            padding-bottom: 15px;
+        }
+        .measure-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #2c3e50;
+            font-size: 15px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(16, 1fr);
+            gap: 4px;
+        }
+        
+        .cell {
+            height: 65px;
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            user-select: none;
+            transition: background 0.1s;
+        }
+        .cell:nth-child(4n+1) { border-left: 3px solid #64748b; }
+        
+        .cell .beat-indicator {
+            position: absolute;
+            top: 2px;
+            left: 4px;
+            font-size: 9px;
+            color: #adb5bd;
+        }
+        .cell .music-char {
+            font-size: 28px;
+            line-height: 1;
+            margin-top: 5px;
+        }
+        .cell .duration-tag {
+            font-size: 9px;
+            color: #868e96;
+            margin-top: 2px;
+        }
+        
+        .cell.has-note { background-color: #e8f4fd; border-color: #bee3f8; color: #2b6cb0; }
+        .cell.has-rest { background-color: #f7fafc; border-color: #e2e8f0; color: #a0aec0; }
+        .cell.playing-now {
+            box-shadow: 0 0 0 3px #f6e05e inset;
+            border-color: #d69e2e !important;
+        }
+        
+        .guide {
+            margin-top: 15px;
+            font-size: 13px;
+            color: #718096;
+            line-height: 1.6;
+            max-width: 1020px;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>4/4박자 8마디 리듬 메이커 🎵</h1>
+    <p style="color:#718096; margin: 0 0 15px 0;">총 8마디 리듬 공간입니다. 링크를 복사해 다른 사람과 공유해 보세요!</p>
+
+    <div class="panel controls">
+        <button id="playBtn" class="main-btn btn-play">▶ 리듬 재생</button>
+        <button id="clearBtn" class="main-btn btn-clear">전체 초기화</button>
+        <button id="shareBtn" class="main-btn btn-share">🔗 공유 링크 복사</button>
+        <div>
+            <label for="bpm">템포 (BPM): </label>
+            <input type="number" id="bpm" value="120" min="50" max="200">
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="palette-title">✏️ 배치할 음표 / 쉼표 선택</div>
+        <div class="palette" id="palette"></div>
+    </div>
+
+    <div class="sequencer" id="sequencer"></div>
+
+    <div class="guide">
+        <strong>💡 변경 사항 안내:</strong><br>
+        * 리듬 편집 공간이 직관적인 <strong>총 8마디</strong>로 최적화되었습니다.<br>
+        * 8마디 리듬 작성이 끝나고 공유 버튼을 누르면, 딱 8마디 분량의 데이터만 축약되어 더 깔끔한 공유 링크가 복사됩니다.
+    </div>
+
+    <script>
+        const TOOLS = [
+            { id: 'n1', type: 'note', length: 1,  name: '16분', symbol: '𝅘𝅥𝅯' },
+            { id: 'n2', type: 'note', length: 2,  name: '8분',  symbol: '𝅘𝅥𝅮' },
+            { id: 'n3', type: 'note', length: 3,  name: '점8분',symbol: '𝅘𝅥𝅮.' },
+            { id: 'n4', type: 'note', length: 4,  name: '4분',  symbol: '𝅘𝅥' },
+            { id: 'n6', type: 'note', length: 6,  name: '점4분',symbol: '𝅘𝅥.' },
+            { id: 'n8', type: 'note', length: 8,  name: '2분',  symbol: '𝅗𝅥' },
+            { id: 'n12',type: 'note', length: 12, name: '점2분',symbol: '𝅗𝅥.' },
+            { id: 'n16',type: 'note', length: 16, name: '온음표', symbol: '𝅝' },
+            
+            { id: 'r1', type: 'rest', length: 1,  name: '16쉼', symbol: '𝄾' },
+            { id: 'r2', type: 'rest', length: 2,  name: '8쉼',  symbol: '𝄽' },
+            { id: 'r3', type: 'rest', length: 3,  name: '점8쉼',symbol: '𝄽.' },
+            { id: 'r4', type: 'rest', length: 4,  name: '4쉼',  symbol: '𝄼' },
+            { id: 'r6', type: 'rest', length: 6,  name: '점4쉼',symbol: '𝄼.' },
+            { id: 'r8', type: 'rest', length: 8,  name: '2쉼',  symbol: '𝄻' },
+            { id: 'r12',type: 'rest', length: 12, name: '점2쉼',symbol: '𝄻.' },
+            { id: 'r16',type: 'rest', length: 16, name: '온쉼',  symbol: '𝄺' },
+            
+            { id: 'eraser', type: 'eraser', length: 0, name: '지우개', symbol: '🧹' }
+        ];
+
+        let selectedTool = TOOLS[3]; 
+        const TOTAL_MEASURES = 8; // 🛠️ 16에서 8마디로 전격 수정!
+        const STEPS_PER_MEASURE = 16;
+        const TOTAL_STEPS = TOTAL_MEASURES * STEPS_PER_MEASURE;
+        
+        let gridState = Array(TOTAL_STEPS).fill(null);
+        
+        let isPlaying = false;
+        let currentStep = 0;
+        let intervalId = null;
+        let audioCtx = null;
+
+        const paletteContainer = document.getElementById('palette');
+        const sequencerContainer = document.getElementById('sequencer');
+        const playBtn = document.getElementById('playBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const shareBtn = document.getElementById('shareBtn');
+        const bpmInput = document.getElementById('bpm');
+
+        // 팔레트 세팅
+        TOOLS.forEach(tool => {
+            const btn = document.createElement('button');
+            btn.className = `tool-btn ${tool.id === selectedTool.id ? 'selected' : ''}`;
+            btn.innerHTML = `<span class="symbol">${tool.symbol}</span><span style="font-size:11px;">${tool.name}</span>`;
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('selected'));
+                btn.classList.add('selected');
+                selectedTool = tool;
+            });
+            paletteContainer.appendChild(btn);
+        });
+
+        // 8마디 그리드 세팅
+        for (let m = 0; m < TOTAL_MEASURES; m++) {
+            const measureDiv = document.createElement('div');
+            measureDiv.className = 'measure';
+            
+            const title = document.createElement('div');
+            title.className = 'measure-title';
+            title.innerText = `🎼 00${m + 1}`.slice(-5) + ' 마디';
+            measureDiv.appendChild(title);
+
+            const gridDiv = document.createElement('div');
+            gridDiv.className = 'grid';
+
+            for (let s = 0; s < STEPS_PER_MEASURE; s++) {
+                const stepIndex = m * STEPS_PER_MEASURE + s;
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                cell.dataset.step = stepIndex;
+                
+                if (s % 4 === 0) {
+                    const beatInd = document.createElement('div');
+                    beatInd.className = 'beat-indicator';
+                    beatInd.innerText = `${(s/4)+1}♩`;
+                    cell.appendChild(beatInd);
+                }
+                
+                cell.addEventListener('click', () => handleCellClick(stepIndex));
+                gridDiv.appendChild(cell);
+            }
+            measureDiv.appendChild(gridDiv);
+            sequencerContainer.appendChild(measureDiv);
+        }
+
+        function handleCellClick(index) {
+            if (selectedTool.type === 'eraser' || (gridState[index] && gridState[index].id === selectedTool.id)) {
+                clearCellState(index);
+                return;
+            }
+
+            const maxAllowedLength = STEPS_PER_MEASURE - (index % STEPS_PER_MEASURE);
+            if (selectedTool.length > maxAllowedLength) {
+                alert("선택한 음표/쉼표가 마디의 남은 길이를 초과합니다!");
+                return;
+            }
+
+            for(let i = 0; i < selectedTool.length; i++) {
+                clearCellState(index + i);
+            }
+
+            gridState[index] = {
+                id: selectedTool.id,
+                type: selectedTool.type,
+                length: selectedTool.length,
+                symbol: selectedTool.symbol,
+                isHeader: true
+            };
+
+            for (let i = 1; i < selectedTool.length; i++) {
+                gridState[index + i] = {
+                    id: selectedTool.id,
+                    type: selectedTool.type,
+                    length: selectedTool.length,
+                    isHeader: false
+                };
+            }
+            updateGridDOM();
+        }
+
+        function clearCellState(index) {
+            const state = gridState[index];
+            if (!state) return;
+
+            let start = index;
+            while (start > 0 && gridState[start] && !gridState[start].isHeader) {
+                start--;
+            }
+            
+            const lengthToClear = gridState[start].length;
+            for (let i = 0; i < lengthToClear; i++) {
+                gridState[start + i] = null;
+            }
+            updateGridDOM();
+        }
+
+        function updateGridDOM() {
+            for (let i = 0; i < TOTAL_STEPS; i++) {
+                const cell = document.querySelector(`.cell[data-step="${i}"]`);
+                const oldChar = cell.querySelector('.music-char');
+                const oldTag = cell.querySelector('.duration-tag');
+                if(oldChar) oldChar.remove();
+                if(oldTag) oldTag.remove();
+                
+                cell.classList.remove('has-note', 'has-rest');
+
+                const state = gridState[i];
+                if (state) {
+                    if (state.type === 'note') cell.classList.add('has-note');
+                    if (state.type === 'rest') cell.classList.add('has-rest');
+
+                    if (state.isHeader) {
+                        const charDiv = document.createElement('div');
+                        charDiv.className = 'music-char';
+                        charDiv.innerText = state.symbol;
+                        cell.appendChild(charDiv);
+
+                        const tagDiv = document.createElement('div');
+                        tagDiv.className = 'duration-tag';
+                        tagDiv.innerText = state.length > 1 ? `← ${state.length}칸 →` : '';
+                        cell.appendChild(tagDiv);
+                    }
+                }
+            }
+        }
+
+        // 주소창 인코딩
+        function exportToURL() {
+            const compactData = [];
+            for(let i=0; i<TOTAL_STEPS; i++) {
+                if(gridState[i] && gridState[i].isHeader) {
+                    compactData.push(`${i}:${gridState[i].id}`);
+                }
+            }
+            const dataString = compactData.join(',');
+            const encodedData = btoa(dataString);
+            
+            return `${window.location.origin}${window.location.pathname}?bpm=${bpmInput.value}&data=${encodedData}`;
+        }
+
+        function importFromURL() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const bpm = urlParams.get('bpm');
+            const data = urlParams.get('data');
+
+            if(bpm) bpmInput.value = bpm;
+            if(!data) return;
+
+            try {
+                const decodedData = atob(data);
+                if(!decodedData) return;
+                
+                const items = decodedData.split(',');
+                items.forEach(item => {
+                    const [indexStr, toolId] = item.split(':');
+                    const index = parseInt(indexStr);
+                    const tool = TOOLS.find(t => t.id === toolId);
+                    
+                    if(tool && index < TOTAL_STEPS) {
+                        gridState[index] = {
+                            id: tool.id,
+                            type: tool.type,
+                            length: tool.length,
+                            symbol: tool.symbol,
+                            isHeader: true
+                        };
+                        for (let i = 1; i < tool.length; i++) {
+                            gridState[index + i] = {
+                                id: tool.id,
+                                type: tool.type,
+                                length: tool.length,
+                                isHeader: false
+                            };
+                        }
+                    }
+                });
+                updateGridDOM();
+            } catch (e) {
+                console.error("데이터 복원 실패", e);
+            }
+        }
+
+        // 오디오 발성 시스템 (확장된 고출력 볼륨)
+        function playSound(type) {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            
+            const osc = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            
+            osc.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            const now = audioCtx.currentTime;
+
+            if (type === 'note') {
+                osc.frequency.setValueAtTime(680, now);
+                osc.type = 'sine';
+                
+                gainNode.gain.setValueAtTime(0.95, now); // 최대 한계 볼륨
+                gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+                
+                osc.start(now);
+                osc.stop(now + 0.18);
+            } else if (type === 'metronome') {
+                osc.frequency.setValueAtTime(320, now);
+                osc.type = 'triangle';
+                
+                gainNode.gain.setValueAtTime(0.25, now);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+                
+                osc.start(now);
+                osc.stop(now + 0.06);
+            }
+        }
+
+        // 루프 인터벌 구동 엔진
+        function runSequencer() {
+            const bpm = parseInt(bpmInput.value) || 120;
+            const stepTime = (60 / bpm) / 4 * 1000;
+
+            intervalId = setInterval(() => {
+                const prevCell = document.querySelector(`.cell[data-step="${(currentStep - 1 + TOTAL_STEPS) % TOTAL_STEPS}"]`);
+                if (prevCell) prevCell.classList.remove('playing-now');
+
+                const currentCell = document.querySelector(`.cell[data-step="${currentStep}"]`);
+                if (currentCell) {
+                    currentCell.classList.add('playing-now');
+                    const state = gridState[currentStep];
+                    
+                    if (state && state.type === 'note' && state.isHeader) {
+                        playSound('note');
+                    } else if (currentStep % 16 === 0) {
+                        playSound('metronome');
+                    }
+                }
+                currentStep = (currentStep + 1) % TOTAL_STEPS;
+            }, stepTime);
+        }
+
+        // 재생 제어
+        playBtn.addEventListener('click', () => {
+            if (isPlaying) {
+                clearInterval(intervalId);
+                const activePlayCell = document.querySelector('.cell.playing-now');
+                if (activePlayCell) activePlayCell.classList.remove('playing-now');
+                playBtn.innerText = '▶ 리듬 재생';
+                playBtn.classList.remove('playing');
+                currentStep = 0;
+            } else {
+                runSequencer();
+                playBtn.innerText = '■ 재생 정지';
+                playBtn.classList.add('playing');
+            }
+            isPlaying = !isPlaying;
+        });
+
+        clearBtn.addEventListener('click', () => {
+            gridState.fill(null);
+            updateGridDOM();
+        });
+
+        // 링크 클립보드 복사
+        shareBtn.addEventListener('click', () => {
+            const url = exportToURL();
+            navigator.clipboard.writeText(url).then(() => {
+                alert("현재 작성한 8마디 리듬 링크가 성공적으로 복사되었습니다! 🎵");
+            }).catch(err => {
+                alert("링크 복사 실패! 주소창의 URL을 복사해 사용해주세요.");
+            });
+        });
+
+        window.onload = importFromURL;
+    </script>
+</body>
+</html>
