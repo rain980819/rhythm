@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>4/4박자 8마디 리듬 메이커 (고볼륨 & 공유 지원)</title>
+    <title>4/4박자 8마디 리듬 메이커</title>
     <style>
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: #f8f9fa;
             margin: 0;
             padding: 20px;
@@ -45,12 +45,12 @@
             flex-wrap: wrap;
         }
         .tool-btn {
-            padding: 8px 12px;
+            padding: 6px 10px;
             background-color: #f1f3f5;
             border: 2px solid #dee2e6;
             border-radius: 6px;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 13px;
             display: flex;
             align-items: center;
             gap: 6px;
@@ -63,7 +63,17 @@
             color: white;
             border-color: #2980b9;
         }
-        .tool-btn .symbol { font-size: 20px; font-weight: normal; }
+        .tool-btn.selected svg {
+            filter: brightness(0) invert(1);
+        }
+        
+        /* 그래픽 아이콘 크기 규격화 */
+        .music-icon {
+            width: 28px;
+            height: 32px;
+            display: inline-block;
+            vertical-align: middle;
+        }
 
         button.main-btn {
             padding: 10px 20px;
@@ -121,7 +131,7 @@
         }
         
         .cell {
-            height: 65px;
+            height: 70px;
             background-color: #f8f9fa;
             border: 1px solid #e9ecef;
             border-radius: 6px;
@@ -143,10 +153,8 @@
             font-size: 9px;
             color: #adb5bd;
         }
-        .cell .music-char {
-            font-size: 28px;
-            line-height: 1;
-            margin-top: 5px;
+        .cell .icon-wrapper {
+            margin-top: 10px;
         }
         .cell .duration-tag {
             font-size: 9px;
@@ -155,7 +163,10 @@
         }
         
         .cell.has-note { background-color: #e8f4fd; border-color: #bee3f8; color: #2b6cb0; }
+        .cell.has-note svg { fill: #2b6cb0; }
         .cell.has-rest { background-color: #f7fafc; border-color: #e2e8f0; color: #a0aec0; }
+        .cell.has-rest svg { fill: #718096; }
+        
         .cell.playing-now {
             box-shadow: 0 0 0 3px #f6e05e inset;
             border-color: #d69e2e !important;
@@ -174,7 +185,7 @@
 <body>
 
     <h1>4/4박자 8마디 리듬 메이커 🎵</h1>
-    <p style="color:#718096; margin: 0 0 15px 0;">총 8마디 리듬 공간입니다. 링크를 복사해 다른 사람과 공유해 보세요!</p>
+    <p style="color:#718096; margin: 0 0 15px 0;">음표 및 쉼표 표기 오류 보정 버전입니다.</p>
 
     <div class="panel controls">
         <button id="playBtn" class="main-btn btn-play">▶ 리듬 재생</button>
@@ -194,36 +205,55 @@
     <div class="sequencer" id="sequencer"></div>
 
     <div class="guide">
-        <strong>💡 변경 사항 안내:</strong><br>
-        * 리듬 편집 공간이 직관적인 <strong>총 8마디</strong>로 최적화되었습니다.<br>
-        * 8마디 리듬 작성이 끝나고 공유 버튼을 누르면, 딱 8마디 분량의 데이터만 축약되어 더 깔끔한 공유 링크가 복사됩니다.
+        <strong>💡 패들렛 이용 팁:</strong><br>
+        * 이제 이미지 기반으로 렌더링되므로 네모박스로 깨지거나 모양이 뒤바뀌지 않습니다.<br>
+        * 혹시 작동이 멈추거나 링크 공유가 안 될 때는 우측 상단의 <strong>[새 창으로 열기]</strong>를 눌러 일반 브라우저로 실행해 주세요.
     </div>
 
     <script>
+        // 100% 왜곡 없이 렌더링되는 표준 음악 SVG 그래픽 정의
+        const SVG_ICONS = {
+            // 음표 기호들
+            n16: `<svg class="music-icon" viewBox="0 0 30 40"><path d="M10 30a4 3 0 1 1-4-3 4 3 0 0 1 4 3zm0-3V5h12v3H10v5h12v3H10v17z" fill="currentColor"/></svg>`, // 16분음표 (꼬리 2개)
+            n8: `<svg class="music-icon" viewBox="0 0 30 40"><path d="M10 30a4 3 0 1 1-4-3 4 3 0 0 1 4 3zm0-3V5h12v3H10v22z" fill="currentColor"/></svg>`,  // 8분음표 (꼬리 1개)
+            n4: `<svg class="music-icon" viewBox="0 0 30 40"><path d="M12 30a4 3 0 1 1-4-3 4 3 0 0 1 4 3zm0-3V5h2v22h-2z" fill="currentColor"/></svg>`,   // 4분음표 (기둥+검은머리)
+            n2: `<svg class="music-icon" viewBox="0 0 30 40"><ellipse cx="8" cy="30" rx="4" ry="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 30V5h2v25h-2z" fill="currentColor"/></svg>`, // 2분음표 (기둥+흰머리)
+            n16_w: `<svg class="music-icon" viewBox="0 0 30 40"><ellipse cx="12" cy="20" rx="6" ry="4" fill="none" stroke="currentColor" stroke-width="2"/></svg>`, // 온음표 (기둥없는 흰머리)
+
+            // ⚠️ 정확하게 고증된 쉼표 기호들
+            r16: `<svg class="music-icon" viewBox="0 0 30 40"><path d="M12 10a2 2 0 1 1-2-2 2 2 0 0 1 2 2zm3 8a2 2 0 1 1-2-2 2 2 0 0 1 2 2zm-5-6c2 4 4 6 4 11 0 4-2 7-5 9l-1-2c2-2 3-4 3-7 0-4-3-7-4-11zm3 8c2 4 4 6 4 11 0 3-1 5-3 7l-1-1c1-2 2-4 2-6 0-4-3-7-4-11z" fill="currentColor"/></svg>`, // 16분쉼표 (머리 2개 꺾임)
+            r8: `<svg class="music-icon" viewBox="0 0 30 40"><path d="M14 14a3 3 0 1 1-3-3 3 3 0 0 1 3 3zm-4-3c3 4 5 7 5 13 0 5-2 9-5 11l-1-2c2-2 3-5 3-9 0-5-4-9-5-13z" fill="currentColor"/></svg>`, // 8분쉼표 (머리 1개 꺾임)
+            r4: `<svg class="music-icon" viewBox="0 0 30 40"><path d="M8 8c3 1 5 4 3 7-2 3-5 5-2 9 2 3 5 1 3 5l-2 3c4-2 6-6 4-9-2-2-4-3-2-6 2-3 4-5 1-7z" fill="currentColor"/></svg>`, // 4분쉼표 (번개/Z모양)
+            r2: `<svg class="music-icon" viewBox="0 0 30 40"><rect x="5" y="16" width="20" height="5" fill="currentColor"/><rect x="7" y="11" width="16" height="5" fill="currentColor"/></svg>`, // 2분쉼표 (셋째줄 위에 붙은 모자)
+            r16_w: `<svg class="music-icon" viewBox="0 0 30 40"><rect x="5" y="14" width="20" height="5" fill="currentColor"/><rect x="7" y="19" width="16" height="5" fill="currentColor"/></svg>`, // 온쉼표 (넷째줄 아래로 내린 모자)
+            
+            eraser: `<span style="font-size:20px;">🧹</span>`
+        };
+
         const TOOLS = [
-            { id: 'n1', type: 'note', length: 1,  name: '16분', symbol: '𝅘𝅥𝅯' },
-            { id: 'n2', type: 'note', length: 2,  name: '8분',  symbol: '𝅘𝅥𝅮' },
-            { id: 'n3', type: 'note', length: 3,  name: '점8분',symbol: '𝅘𝅥𝅮.' },
-            { id: 'n4', type: 'note', length: 4,  name: '4분',  symbol: '𝅘𝅥' },
-            { id: 'n6', type: 'note', length: 6,  name: '점4분',symbol: '𝅘𝅥.' },
-            { id: 'n8', type: 'note', length: 8,  name: '2분',  symbol: '𝅗𝅥' },
-            { id: 'n12',type: 'note', length: 12, name: '점2분',symbol: '𝅗𝅥.' },
-            { id: 'n16',type: 'note', length: 16, name: '온음표', symbol: '𝅝' },
+            { id: 'n1', type: 'note', length: 1,  name: '16분음표', svg: SVG_ICONS.n16 },
+            { id: 'n2', type: 'note', length: 2,  name: '8분음표',  svg: SVG_ICONS.n8 },
+            { id: 'n3', type: 'note', length: 3,  name: '점8분',    svg: SVG_ICONS.n8 + '<span style="font-weight:bold;margin-left:2px;font-size:18px;">.</span>' },
+            { id: 'n4', type: 'note', length: 4,  name: '4분음표',  svg: SVG_ICONS.n4 },
+            { id: 'n6', type: 'note', length: 6,  name: '점4분',    svg: SVG_ICONS.n4 + '<span style="font-weight:bold;margin-left:2px;font-size:18px;">.</span>' },
+            { id: 'n8', type: 'note', length: 8,  name: '2분음표',  svg: SVG_ICONS.n2 },
+            { id: 'n12',type: 'note', length: 12, name: '점2분',    svg: SVG_ICONS.n2 + '<span style="font-weight:bold;margin-left:2px;font-size:18px;">.</span>' },
+            { id: 'n16',type: 'note', length: 16, name: '온음표',    svg: SVG_ICONS.n16_w },
             
-            { id: 'r1', type: 'rest', length: 1,  name: '16쉼', symbol: '𝄾' },
-            { id: 'r2', type: 'rest', length: 2,  name: '8쉼',  symbol: '𝄽' },
-            { id: 'r3', type: 'rest', length: 3,  name: '점8쉼',symbol: '𝄽.' },
-            { id: 'r4', type: 'rest', length: 4,  name: '4쉼',  symbol: '𝄼' },
-            { id: 'r6', type: 'rest', length: 6,  name: '점4쉼',symbol: '𝄼.' },
-            { id: 'r8', type: 'rest', length: 8,  name: '2쉼',  symbol: '𝄻' },
-            { id: 'r12',type: 'rest', length: 12, name: '점2쉼',symbol: '𝄻.' },
-            { id: 'r16',type: 'rest', length: 16, name: '온쉼',  symbol: '𝄺' },
+            { id: 'r1', type: 'rest', length: 1,  name: '16분쉼표', svg: SVG_ICONS.r16 },
+            { id: 'r2', type: 'rest', length: 2,  name: '8분쉼표',  svg: SVG_ICONS.r8 },
+            { id: 'r3', type: 'rest', length: 3,  name: '점8쉼표',  svg: SVG_ICONS.r8 + '<span style="font-weight:bold;margin-left:2px;font-size:18px;">.</span>' },
+            { id: 'r4', type: 'rest', length: 4,  name: '4분쉼표',  svg: SVG_ICONS.r4 },
+            { id: 'r6', type: 'rest', length: 6,  name: '점4쉼표',  svg: SVG_ICONS.r4 + '<span style="font-weight:bold;margin-left:2px;font-size:18px;">.</span>' },
+            { id: 'r8', type: 'rest', length: 8,  name: '2분쉼표',  svg: SVG_ICONS.r2 },
+            { id: 'r12',type: 'rest', length: 12, name: '점2쉼표',  svg: SVG_ICONS.r2 + '<span style="font-weight:bold;margin-left:2px;font-size:18px;">.</span>' },
+            { id: 'r16',type: 'rest', length: 16, name: '온쉼표',    svg: SVG_ICONS.r16_w },
             
-            { id: 'eraser', type: 'eraser', length: 0, name: '지우개', symbol: '🧹' }
+            { id: 'eraser', type: 'eraser', length: 0, name: '지우개', svg: SVG_ICONS.eraser }
         ];
 
         let selectedTool = TOOLS[3]; 
-        const TOTAL_MEASURES = 8; // 🛠️ 16에서 8마디로 전격 수정!
+        const TOTAL_MEASURES = 8; 
         const STEPS_PER_MEASURE = 16;
         const TOTAL_STEPS = TOTAL_MEASURES * STEPS_PER_MEASURE;
         
@@ -241,11 +271,10 @@
         const shareBtn = document.getElementById('shareBtn');
         const bpmInput = document.getElementById('bpm');
 
-        // 팔레트 세팅
         TOOLS.forEach(tool => {
             const btn = document.createElement('button');
             btn.className = `tool-btn ${tool.id === selectedTool.id ? 'selected' : ''}`;
-            btn.innerHTML = `<span class="symbol">${tool.symbol}</span><span style="font-size:11px;">${tool.name}</span>`;
+            btn.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;">${tool.svg}</div><span style="font-size:11px;margin-left:2px;">${tool.name}</span>`;
             btn.addEventListener('click', () => {
                 document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('selected'));
                 btn.classList.add('selected');
@@ -254,7 +283,6 @@
             paletteContainer.appendChild(btn);
         });
 
-        // 8마디 그리드 세팅
         for (let m = 0; m < TOTAL_MEASURES; m++) {
             const measureDiv = document.createElement('div');
             measureDiv.className = 'measure';
@@ -307,7 +335,7 @@
                 id: selectedTool.id,
                 type: selectedTool.type,
                 length: selectedTool.length,
-                symbol: selectedTool.symbol,
+                svg: selectedTool.svg,
                 isHeader: true
             };
 
@@ -341,9 +369,9 @@
         function updateGridDOM() {
             for (let i = 0; i < TOTAL_STEPS; i++) {
                 const cell = document.querySelector(`.cell[data-step="${i}"]`);
-                const oldChar = cell.querySelector('.music-char');
+                const oldWrapper = cell.querySelector('.icon-wrapper');
                 const oldTag = cell.querySelector('.duration-tag');
-                if(oldChar) oldChar.remove();
+                if(oldWrapper) oldWrapper.remove();
                 if(oldTag) oldTag.remove();
                 
                 cell.classList.remove('has-note', 'has-rest');
@@ -354,10 +382,13 @@
                     if (state.type === 'rest') cell.classList.add('has-rest');
 
                     if (state.isHeader) {
-                        const charDiv = document.createElement('div');
-                        charDiv.className = 'music-char';
-                        charDiv.innerText = state.symbol;
-                        cell.appendChild(charDiv);
+                        const wrapperDiv = document.createElement('div');
+                        wrapperDiv.className = 'icon-wrapper';
+                        
+                        // 점음표/점쉼표 대응용 SVG 주입
+                        const matchedTool = TOOLS.find(t => t.id === state.id);
+                        wrapperDiv.innerHTML = matchedTool ? matchedTool.svg : state.svg;
+                        cell.appendChild(wrapperDiv);
 
                         const tagDiv = document.createElement('div');
                         tagDiv.className = 'duration-tag';
@@ -368,7 +399,6 @@
             }
         }
 
-        // 주소창 인코딩
         function exportToURL() {
             const compactData = [];
             for(let i=0; i<TOTAL_STEPS; i++) {
@@ -405,7 +435,7 @@
                             id: tool.id,
                             type: tool.type,
                             length: tool.length,
-                            symbol: tool.symbol,
+                            svg: tool.svg,
                             isHeader: true
                         };
                         for (let i = 1; i < tool.length; i++) {
@@ -420,11 +450,10 @@
                 });
                 updateGridDOM();
             } catch (e) {
-                console.error("데이터 복원 실패", e);
+                console.error("데이터 로드 에러", e);
             }
         }
 
-        // 오디오 발성 시스템 (확장된 고출력 볼륨)
         function playSound(type) {
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             
@@ -440,7 +469,7 @@
                 osc.frequency.setValueAtTime(680, now);
                 osc.type = 'sine';
                 
-                gainNode.gain.setValueAtTime(0.95, now); // 최대 한계 볼륨
+                gainNode.gain.setValueAtTime(0.95, now); 
                 gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
                 
                 osc.start(now);
@@ -457,7 +486,6 @@
             }
         }
 
-        // 루프 인터벌 구동 엔진
         function runSequencer() {
             const bpm = parseInt(bpmInput.value) || 120;
             const stepTime = (60 / bpm) / 4 * 1000;
@@ -481,7 +509,6 @@
             }, stepTime);
         }
 
-        // 재생 제어
         playBtn.addEventListener('click', () => {
             if (isPlaying) {
                 clearInterval(intervalId);
@@ -503,11 +530,10 @@
             updateGridDOM();
         });
 
-        // 링크 클립보드 복사
         shareBtn.addEventListener('click', () => {
             const url = exportToURL();
             navigator.clipboard.writeText(url).then(() => {
-                alert("현재 작성한 8마디 리듬 링크가 성공적으로 복사되었습니다! 🎵");
+                alert("현재 작성한 리듬 링크가 성공적으로 복사되었습니다! 🎵");
             }).catch(err => {
                 alert("링크 복사 실패! 주소창의 URL을 복사해 사용해주세요.");
             });
