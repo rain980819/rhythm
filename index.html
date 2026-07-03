@@ -63,14 +63,13 @@
             color: white;
             border-color: #2980b9;
         }
-        /* 선택되었을 때 이미지가 파란 배경에 묻히지 않도록 흰색(반전) 필터 적용 */
         .tool-btn.selected img {
             filter: brightness(0) invert(1);
         }
         
-        /* 🚨 진짜 이미지 파일의 가독성을 위한 규격 세팅 */
+        /* 내장형 고화질 그래픽 규격 서식 */
         .music-img {
-            height: 38px;
+            height: 36px;
             width: auto;
             object-fit: contain;
             display: inline-block;
@@ -179,7 +178,7 @@
 <body>
 
     <h1>4/4박자 8마디 리듬 메이커 🎵</h1>
-    <p style="color:#718096; margin: 0 0 15px 0;">순수 이미지 연동 방식 버전</p>
+    <p style="color:#718096; margin: 0 0 15px 0;">완전 내장형 그래픽 탑재 버전</p>
 
     <div class="panel controls">
         <button id="playBtn" class="main-btn btn-play">▶ 리듬 재생</button>
@@ -199,43 +198,43 @@
     <div class="sequencer" id="sequencer"></div>
 
     <script>
-        // 위키미디어 공식 악보용 고화질 투명 PNG 이미지 URL 매칭
-        const REAL_IMAGES = {
-            n16: `https://upload.wikimedia.org/wikipedia/commons/thumb/c/c0/Sixteenth_note.svg/60px-Sixteenth_note.svg.png`,
-            n8: `https://upload.wikimedia.org/wikipedia/commons/thumb/a/ad/Eighth_note.svg/60px-Eighth_note.svg.png`,
-            n4: `https://upload.wikimedia.org/wikipedia/commons/thumb/0/0e/Quarter_note.svg/45px-Quarter_note.svg.png`,
-            n2: `https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Half_note.svg/53px-Half_note.svg.png`,
-            n16_w: `https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/Whole_note.svg/80px-Whole_note.svg.png`,
+        // 외부 링크 엑박 문제를 원천 차단하기 위한 내장 데이터 벡터 그래픽 주소
+        const EMBEDDED_GRAPHICS = {
+            n16: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 40"><circle cx="10" cy="30" r="4.5" fill="black"/><path d="M14.5 30V6h1.5v24z" fill="black"/><path d="M16 6c3 1.5 6 1.5 8.5 3.5v3c-2.5-2-5.5-2-8.5-3.5zm0 5c3 1.5 6 1.5 8.5 3.5v3c-2.5-2-5.5-2-8.5-3.5z" fill="black"/></svg>`,
+            n8: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 40"><circle cx="10" cy="30" r="4.5" fill="black"/><path d="M14.5 30V6h1.5v24z" fill="black"/><path d="M16 6c4.5 2 7.5 2 9.5 4.5v3.5c-2-2.5-5-2.5-9-4.5z" fill="black"/></svg>`,
+            n4: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 40"><circle cx="10" cy="30" r="4.5" fill="black"/><path d="M14.5 30V6h1.5v24z" fill="black"/></svg>`,
+            n2: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 40"><ellipse cx="10" cy="30" rx="4.5" ry="3.5" fill="none" stroke="black" stroke-width="2.5"/><path d="M14.5 30V6h1.5v24z" fill="black"/></svg>`,
+            n16_w: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 40"><ellipse cx="15" cy="20" rx="7" ry="4.5" fill="none" stroke="black" stroke-width="3"/></svg>`,
 
-            r16: `https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Sixteenth_rest.svg/44px-Sixteenth_rest.svg.png`,
-            r8: `https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/Eighth_rest.svg/48px-Eighth_rest.svg.png`,
-            r4: `https://upload.wikimedia.org/wikipedia/commons/thumb/b/b5/Quarter_rest.svg/41px-Quarter_rest.svg.png`,
-            r2: `https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Half_rest.svg/71px-Half_rest.svg.png`,
-            r16_w: `https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/Whole_rest.svg/71px-Whole_rest.svg.png`,
+            r16: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 40"><circle cx="13" cy="13" r="2.2" fill="black"/><path d="M13 13.5c2 2.5 4 1.5 5.5-1.5" stroke="black" stroke-width="1.5" fill="none"/><circle cx="10" cy="21" r="2.2" fill="black"/><path d="M10 21.5c2 2.5 4 1.5 5.5-1.5" stroke="black" stroke-width="1.5" fill="none"/><path d="M17 10l-7.5 20M11.5 25c2 3.5 3.5 6.5 2 10" stroke="black" stroke-width="2" fill="none"/></svg>`,
+            r8: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 40"><circle cx="13" cy="15" r="2.8" fill="black"/><path d="M13 15.5c2.5 2.5 4.5 1.5 6-1.5" stroke="black" stroke-width="1.8" fill="none"/><path d="M17.5 11l-7.5 21M12 25.5c2.5 4 4.5 7.5 2 11" stroke="black" stroke-width="2.2" fill="none"/></svg>`,
+            r4: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 40"><path d="M10 7l6 5.5-5.5 5.5c3.5 3.5 5.5 6.5 1 11 3.5-1.5 5.5 0 2.5 4l-2 2.5c4.5-2.5 6.5-4.5 4-8.5-2.5-3-4.5-3.5-1-7.5l5-5-5.5-4.5z" fill="black"/></svg>`,
+            r2: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 40"><path d="M5 22h20v-5H5z" fill="black"/><path d="M2 22h26" stroke="black" stroke-width="1.5"/></svg>`,
+            r16_w: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 40"><path d="M5 15h20v5H5z" fill="black"/><path d="M2 15h26" stroke="black" stroke-width="1.5"/></svg>`,
             
             eraser: `🧹`
         };
 
         const TOOLS = [
-            { id: 'n1', type: 'note', length: 1,  name: '16분음표', img: REAL_IMAGES.n16, isDot: false },
-            { id: 'n2', type: 'note', length: 2,  name: '8분음표',  img: REAL_IMAGES.n8, isDot: false },
-            { id: 'n3', type: 'note', length: 3,  name: '점8분',    img: REAL_IMAGES.n8, isDot: true },
-            { id: 'n4', type: 'note', length: 4,  name: '4분음표',  img: REAL_IMAGES.n4, isDot: false },
-            { id: 'n6', type: 'note', length: 6,  name: '점4분',    img: REAL_IMAGES.n4, isDot: true },
-            { id: 'n8', type: 'note', length: 8,  name: '2분음표',  img: REAL_IMAGES.n2, isDot: false },
-            { id: 'n12',type: 'note', length: 12, name: '점2분',    img: REAL_IMAGES.n2, isDot: true },
-            { id: 'n16',type: 'note', length: 16, name: '온음표',    img: REAL_IMAGES.n16_w, isDot: false },
+            { id: 'n1', type: 'note', length: 1,  name: '16분음표', img: EMBEDDED_GRAPHICS.n16, isDot: false },
+            { id: 'n2', type: 'note', length: 2,  name: '8분음표',  img: EMBEDDED_GRAPHICS.n8, isDot: false },
+            { id: 'n3', type: 'note', length: 3,  name: '점8분',    img: EMBEDDED_GRAPHICS.n8, isDot: true },
+            { id: 'n4', type: 'note', length: 4,  name: '4분음표',  img: EMBEDDED_GRAPHICS.n4, isDot: false },
+            { id: 'n6', type: 'note', length: 6,  name: '점4분',    img: EMBEDDED_GRAPHICS.n4, isDot: true },
+            { id: 'n8', type: 'note', length: 8,  name: '2분음표',  img: EMBEDDED_GRAPHICS.n2, isDot: false },
+            { id: 'n12',type: 'note', length: 12, name: '점2분',    img: EMBEDDED_GRAPHICS.n2, isDot: true },
+            { id: 'n16',type: 'note', length: 16, name: '온음표',    img: EMBEDDED_GRAPHICS.n16_w, isDot: false },
             
-            { id: 'r1', type: 'rest', length: 1,  name: '16분쉼표', img: REAL_IMAGES.r16, isDot: false },
-            { id: 'r2', type: 'rest', length: 2,  name: '8분쉼표',  img: REAL_IMAGES.r8, isDot: false },
-            { id: 'r3', type: 'rest', length: 3,  name: '점8쉼표',  img: REAL_IMAGES.r8, isDot: true },
-            { id: 'r4', type: 'rest', length: 4,  name: '4분쉼표',  img: REAL_IMAGES.r4, isDot: false },
-            { id: 'r6', type: 'rest', length: 6,  name: '점4쉼표',  img: REAL_IMAGES.r4, isDot: true },
-            { id: 'r8', type: 'rest', length: 8,  name: '2분쉼표',  img: REAL_IMAGES.r2, isDot: false },
-            { id: 'r12',type: 'rest', length: 12, name: '점2쉼표',  img: REAL_IMAGES.r2, isDot: true },
-            { id: 'r16',type: 'rest', length: 16, name: '온쉼표',    img: REAL_IMAGES.r16_w, isDot: false },
+            { id: 'r1', type: 'rest', length: 1,  name: '16분쉼표', img: EMBEDDED_GRAPHICS.r16, isDot: false },
+            { id: 'r2', type: 'rest', length: 2,  name: '8분쉼표',  img: EMBEDDED_GRAPHICS.r8, isDot: false },
+            { id: 'r3', type: 'rest', length: 3,  name: '점8쉼표',  img: EMBEDDED_GRAPHICS.r8, isDot: true },
+            { id: 'r4', type: 'rest', length: 4,  name: '4분쉼표',  img: EMBEDDED_GRAPHICS.r4, isDot: false },
+            { id: 'r6', type: 'rest', length: 6,  name: '점4쉼표',  img: EMBEDDED_GRAPHICS.r4, isDot: true },
+            { id: 'r8', type: 'rest', length: 8,  name: '2분쉼표',  img: EMBEDDED_GRAPHICS.r2, isDot: false },
+            { id: 'r12',type: 'rest', length: 12, name: '점2쉼표',  img: EMBEDDED_GRAPHICS.r2, isDot: true },
+            { id: 'r16',type: 'rest', length: 16, name: '온쉼표',    img: EMBEDDED_GRAPHICS.r16_w, isDot: false },
             
-            { id: 'eraser', type: 'eraser', length: 0, name: '지우개', img: REAL_IMAGES.eraser, isDot: false }
+            { id: 'eraser', type: 'eraser', length: 0, name: '지우개', img: EMBEDDED_GRAPHICS.eraser, isDot: false }
         ];
 
         let selectedTool = TOOLS[3]; 
